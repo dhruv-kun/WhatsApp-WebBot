@@ -1,0 +1,6 @@
+chromedriver
+*.pkl
+*.jpeg
+*.png
+*.jpg
+*.gif
