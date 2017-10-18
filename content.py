@@ -14,6 +14,7 @@ class Content(object):
 
         self.website = None
         self.timestamp = None
+        self.sent = []
 
     def save(self, file):
         # Pass a json file and save data of the
