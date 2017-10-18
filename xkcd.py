@@ -5,6 +5,7 @@ from urllib.parse import urljoin
 import pickle
 import os
 import time
+from datetime import datetime
 from content import Content
 
 URL = 'https://www.xkcd.com'
@@ -70,7 +71,7 @@ def download_image(count=1):
     image.format = comic.img.get('src').split('.')[-1]
     image.filename = "xkcd." + image.format
     image.filepath = os.getcwd() + '/' + image.filename
-
+    image.timestamp = datetime.ctime(datetime.now())
     # write the data to file in chunks
     req = requests.get(image.link, stream=True)
     with open(image.filename, 'wb') as temp:
@@ -105,8 +106,8 @@ def get_image():
     # Load if we already have any metadata about the
     # images we have retrieved so far, and if not create
     # metadata
-    if os.path.isfile('metadata.pkl'):
-        with open('metadata.pkl', 'rb') as meta:
+    if os.path.isfile('xkcd.pkl'):
+        with open('xkcd.pkl', 'rb') as meta:
             data = pickle.load(meta)
     else:
         data = {
@@ -123,6 +124,6 @@ def get_image():
     data['LastComicPage'] = count
 
     # Write the metadata to the file for future use
-    with open('metadata.pkl', 'wb') as meta:
+    with open('xkcd.pkl', 'wb') as meta:
         pickle.dump(data, meta)
     return image
