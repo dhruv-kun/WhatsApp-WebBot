@@ -101,13 +101,15 @@ def download_image(count=1):
 
 # Store the data about the images viewed so far and
 # return ImageData
-def get_image():
+def get_content():
 
     # Load if we already have any metadata about the
     # images we have retrieved so far, and if not create
     # metadata
-    if os.path.isfile('xkcd.pkl'):
-        with open('xkcd.pkl', 'rb') as meta:
+
+    meta_file = 'xkcd.pkl'
+    if os.path.isfile(meta_file):
+        with open(meta_file, 'rb') as meta:
             data = pickle.load(meta)
     else:
         data = {
@@ -124,6 +126,6 @@ def get_image():
     data['LastComicPage'] = count
 
     # Write the metadata to the file for future use
-    with open('xkcd.pkl', 'wb') as meta:
+    with open(meta_file, 'wb') as meta:
         pickle.dump(data, meta)
     return image

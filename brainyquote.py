@@ -129,16 +129,17 @@ def download_quotes(driver, auth_url):
 
 
 # Returns a quote from website or from off-line file
-def get_quote():
+def get_content():
 
     # Url where authors names are shown
     url = "https://www.brainyquote.com/quotes/favorites.html"
     chrome_path = os.getcwd() + '/chromedriver'
-
+    driver = None
     # If metadata exists then get data from that that else
     # create data with initial values
-    if os.path.isfile('brainyquote.pkl'):
-        with open('brainyquote.pkl', 'rb') as meta:
+    meta_file = 'brainyquote.pkl'
+    if os.path.isfile(meta_file):
+        with open(meta_file, 'rb') as meta:
             data = pickle.load(meta)
     else:
         # If metadata is not present the create data with all authors' urls
@@ -149,6 +150,7 @@ def get_quote():
             "authorsUnfinshedUrls": author_urls(driver, url)
         }
         driver.close()
+        driver = None
 
     # If we have unseen quotes less than 300 fetch some more from the
     # website 10 authors at a time
@@ -158,15 +160,17 @@ def get_quote():
         for auth_url in ten_auth_urls:
             data['authorsFinshedUrls'].add(auth_url)
             data['quotesNotSeen'] += download_quotes(driver, auth_url)
-
         # Shuffle quotes so that quotes from same authors are not
         # sent back to back
         random.shuffle(data['quotesNotSeen'])
 
+    if driver:
+        driver.close()
+
     # Get a quote from the data collected
     quote = data['quotesNotSeen'].pop()
 
-    with open('brainyquote.pkl', 'wb') as meta:
+    with open(meta_file, 'wb') as meta:
         pickle.dump(data, meta)
 
     return quote
