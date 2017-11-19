@@ -70,7 +70,7 @@ def send(driver, target, item):
     find_user(driver, target)
 
     # Sending media, documents is different than sending text
-    if item.data_type == 'text':
+    if item.get_type() == 'text':
         # Find and click where we can enter text
         inpt = driver.find_element_by_xpath(
             "//div[@contenteditable='true']")
@@ -78,7 +78,7 @@ def send(driver, target, item):
 
         # For multi-line text press shift then enter to move to
         # next line
-        for i in item.message:
+        for i in item.get_message():
             inpt.send_keys(i)
             inpt.send_keys(Keys.SHIFT, Keys.RETURN)
 
@@ -87,21 +87,21 @@ def send(driver, target, item):
 
     else:
         # Find the button from which we can attach file
-        attach_menu = driver.find_element_by_xpath("//button[@title='Attach']")
+        attach_menu = driver.find_element_by_xpath("//div[@title='Attach']")
         attach_menu.click()
         time.sleep(0.5)
 
         # Different buttons for media, document
-        if item.data_type == 'media':
+        if item.get_type() == 'media':
             inpt = driver.find_element_by_xpath(
                 "//input[@accept='image/*,video/*']")
-        elif item.data_type == 'document':
+        elif item.get_type() == 'document':
             inpt = driver.find_element_by_xpath(
                 "//input[@accept='*']")
 
-        inpt.send_keys(item.filepath)
+        inpt.send_keys(item.get_file())
         time.sleep(2)
-        if item.message is not None:
+        if item.get_message() is not None:
             try:
                 caption = driver.find_element_by_xpath(
                     "//div[@contenteditable='true']")
@@ -112,7 +112,7 @@ def send(driver, target, item):
 
             # For multi-line text press shift then enter to move to
             # next line
-            for i in item.message:
+            for i in item.get_message():
                 caption.send_keys(i)
                 caption.send_keys(Keys.SHIFT, Keys.RETURN)
 
@@ -138,7 +138,7 @@ def send(driver, target, item):
             # Wait for any next activity
             time.sleep(1)
             # Add the the receiver's name to the sent list
-            item.sent += [target]
+            item.add_reciver(target)
         except TimeoutException as e:
             raise(Exception('File upload Not Completed'))
 
@@ -155,7 +155,7 @@ def recieve(driver, target='Slave'):
     messages_inview = driver.find_elements_by_xpath(
         "//div[@class='message-text']")
     messages_datetime_inview = driver.find_elements_by_xpath(
-        "//span[@class='message-datetime']")
+        "//div[@class='bubble-text-meta']")
 
     # Special formating is used to make sense of the text
     # Last line will contain targets and all the lines above
@@ -168,23 +168,28 @@ def recieve(driver, target='Slave'):
     # targets = ['PRD', 'RAB', 'SAS']
 
     item = []
-    message, targets = [], []
+    msg, targets = [], []
     # If there are no messages initially in Slave group, return None, None
-    timestamp = -1
+    tstamp = -1
     if len(messages_inview) > 0:
         item = messages_inview[-1].text.split('\n')
-        message, target = item[:-1], item[-1]
+        msg, target = '\n'.join(item[:-1]), item[-1]
         targets = target.split(' ')
-        timestamp = messages_datetime_inview[-1].text
-        timestamp = datetime.strptime(timestamp, "%I:%M %p").time()
+        tstamp = messages_datetime_inview[-1].text
+        tformat = "%I:%M %p"
+        site = "www.web.whatsapp.com"
     else:
         return None, None
 
     # Make a Content object for the above message so that it
     # can be sent to targets using send()
-    item = Content('text')
-    item.message = message
-    item.timestamp = timestamp
+    item = Content()
+    item.set_type('text')
+    item.set_content(
+        message=msg,
+        website=site,
+        timestamp=(tstamp, tformat)
+    )
     return item, targets
 
 
@@ -201,7 +206,7 @@ def login():
     try:
         WebDriverWait(driver, 30).until(
             EC.presence_of_element_located(
-                (By.CLASS_NAME, "intro-body")))
+                (By.CLASS_NAME, "input-search")))
     except TimeoutException as e:
         raise(Exception('Could Not Login'))
         driver.close()
@@ -214,7 +219,7 @@ def logout(driver):
         # Find the menu item in 10s or less and click on it
         menu = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located(
-                (By.XPATH, "//button[@title='Menu']")))
+                (By.XPATH, "//div[@title='Menu']")))
         menu.click()
 
         # Wait for the dropdown menu to open
@@ -286,7 +291,8 @@ def get_all_users(driver):
                 try:
                     close_search = WebDriverWait(driver, 20).until(
                         EC.presence_of_element_located(
-                            (By.XPATH, "//button[@class='icon-close-search']")))
+                            (By.XPATH, "//button[@class="
+                                "'icon-close-search']")))
                     close_search.click()
                     time.sleep(1)
                 except TimeoutException as e:
@@ -321,12 +327,13 @@ def make_cheatsheet(driver):
         targets[key] = name
 
     # This is for sending to Master group for reference
-    item = Content('text')
-    item.message = []
+    item = Content()
+    item.set_type('text')
+    msg = ""
     for key, value in sorted(targets.items()):
-        msg = "{:<15} {:<15}".format(key, value)
-        item.message.append(msg)
-    item.timestamp = datetime.ctime(datetime.now())
+        msg += "{:<15} {:<15}\n".format(key, value)
+
+    item.set_content(message=msg)
     return targets, item
 
 
@@ -346,18 +353,30 @@ def main():
         }
 
     # Pause time between messages
-    PAUSE = 15 * 60
+    TIMEOUT_TIMER = 1
+    PAUSE = 5
     REPEAT = 3
     try:
         driver = login()
+        print('Logged In')
         target = 'Master'
-        if len(data['targets']) == 0:
-            data['targets'], cheat_content = make_cheatsheet(driver)
+        if data['cheatsheetSent'] is False:
+            if len(data['targets']) == 0:
+                data['targets'], cheat_content = make_cheatsheet(driver)
+            else:
+                msg = ""
+                for key, val in sorted(data['targets'].items()):
+                    msg += "{:<15} {:<15}\n".format(key, val)
+                cheat_content = Content()
+                cheat_content.set_type('text')
+                cheat_content.set_content(message=msg)
             try:
                 send(driver, 'Master', cheat_content)
             except Exception as e:
                 raise(e)
-        while True:
+            data['cheatsheetSent'] = True
+        while TIMEOUT_TIMER:
+            print('Sending Messages To Master')
             for i in range(REPEAT):
                 try:
                     site = random.choice(ALLSITES)
@@ -366,21 +385,25 @@ def main():
                 except Exception as e:
                     print(e)
                 time.sleep(PAUSE)
+            print('Receiving Messages from Slave')
             item, ids = recieve(driver, 'Slave')
+            print(item, ids)
             if item:
                 if data['lastSentMessageTime'] == -1 \
-                        or item.timestamp > data['lastSentMessageTime']:
+                        or item.get_timestamp() > data['lastSentMessageTime']:
                     if ids[0] == 'ALL':
                         ids = data['targets'].keys()
                     elif ids[0] == 'QUIT':
                         break
+                    print('Sending Messages to Users')
                     for id_ in ids:
                         try:
                             send(driver, data['targets'][id_], item)
                             data['allSentMessages'].append(item)
                         except Exception as e:
                             print(e)
-                    data['lastSentMessageTime'] = item.timestamp
+                    data['lastSentMessageTime'] = item.get_timestamp()
+            TIMEOUT_TIMER -= 1
     except KeyboardInterrupt:
         print('Program Ended')
     finally:
