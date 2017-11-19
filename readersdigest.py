@@ -9,11 +9,32 @@ from datetime import datetime
 
 
 class JokesData(Content):
-    def __init__(self, data_type):
-        super(JokesData, self).__init__(data_type)
-        self.genre = None
-        self.title = None
-        self.post_id = None
+    def __init__(self):
+        self.set_type('text')
+        super(JokesData, self).__init__()
+
+    def set_content(self, message, title,
+                    genre, post_id,
+                    website, timestamp):
+        super(JokesData, self).set_content(
+            message=message,
+            website=website,
+            timestamp=timestamp
+        )
+        self._message = ['*' + title + '*', '_' + genre + '_'] \
+            + self._message
+        self._title = title
+        self._post_id = post_id
+        self._genre = genre
+
+    def get_title(self):
+        return self._title
+
+    def get_id(self):
+        return self._post_id
+
+    def get_genre(self):
+        return self._genre
 
     def save(self, file):
         # Pass a json file and save data of the
@@ -23,9 +44,16 @@ class JokesData(Content):
 
     def __str__(self):
         stng = super(JokesData, self).__str__()
-        stng += "%s %s\n" % ("Title:", self.title)
-        stng += "%s %s\n" % ("Genre:", self.genre)
-        stng += "%s %s\n" % ("Post ID:", self.post_id)
+        stng += "%s %s\n" % ("Title:", self._title)
+        stng += "%s %s\n" % ("Genre:", self._genre)
+        stng += "%s %s" % ("Post ID:", self._post_id)
+        return stng
+
+    def __repr__(self):
+        stng = super(JokesData, self).__str__()
+        stng += "%s %s\n" % ("Title:", self._title)
+        stng += "%s %s\n" % ("Genre:", self._genre)
+        stng += "%s %s" % ("Post ID:", self._post_id)
         return stng
 
 
@@ -43,7 +71,7 @@ def get_soup(url):
 
 # Download Jokes and makes JokesData object for each joke, and returns a
 # list of JokesData
-def download_jokes(url, joke_type):
+def download_jokes(url, joke_type, limit=-1):
     # Append url extension to the base
     url += '/jokes' + joke_type
 
@@ -59,21 +87,32 @@ def download_jokes(url, joke_type):
     char_limit = 1000
     _jokes = [i for i in _jokes if len(i[1]) < char_limit]
 
+    if limit > -1:
+        _jokes = _jokes[:limit]
+
     for i in range(len(_jokes)):
         _jokes[i][1] = _jokes[i][1].strip('\n').strip(' ')
-        _jokes[i][2] = _jokes[i][2].strip('\n').strip(' ').split('\n')
+        _jokes[i][2] = _jokes[i][2].strip('\n').strip(' ')
 
     # Make a list of JokesData
+    website = 'readersdigest'
     jokes = []
     for joke in _jokes:
-        item = JokesData('text')
-        item.title = joke[1]
-        item.genre = joke_type.split('/')[-1]
-        item.message = ['*' + item.title + '*', '_' + item.genre + '_'] \
-            + joke[2]
-        item.timestamp = datetime.ctime(datetime.now())
-        item.website = 'readersdigest'
-        item.post_id = joke[0]
+        item = JokesData()
+
+        post_id, title, message = joke
+        genre = joke_type.split('/')[-1]
+
+        timestamp = datetime.ctime(datetime.now())
+
+        item.set_content(
+            title=title,
+            genre=genre,
+            message=message,
+            timestamp=timestamp,
+            website=website,
+            post_id=post_id
+        )
         jokes.append(item)
     return jokes
 
