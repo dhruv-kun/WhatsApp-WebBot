@@ -5,7 +5,16 @@ and allows to send your messages to multiple friends with
 minimal keystrokes.
 
 Designed to work with minimal human intervention and runs
-until you close it by yourself
+until you close it yourself
+
+## How to run
+Run the command on your terminal
+```bash
+    $ git clone https://github.com/dhruv-kun/whatsapp-automation.git
+    $ cd whatsapp-automation
+    $ python3 main.py
+```
+and login by scanning the QR code from your phone
 
 ## Dependencies
 This project requires python 3.5 and the following dependencies:
