@@ -1,4 +1,4 @@
-# Whatsapp Automation
+# WhatsApp WebBot
 
 Sends messages from different websites to your whatsapp
 and allows to send your messages to multiple friends with
